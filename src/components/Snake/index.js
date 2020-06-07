@@ -27,13 +27,18 @@ export default (props) => {
 
   const moveSnake = (keyCode) => setMove(CONSTANTS.DIRECTIONS[keyCode]);
 
-  const randomFood = (idx) => Math.floor(Math.random() * CONSTANTS.CANVAS_SIZE[idx] / CONSTANTS.SCALE);
+  const randomFood = (idx) =>
+    Math.floor((Math.random() * CONSTANTS.CANVAS_SIZE[idx]) / CONSTANTS.SCALE);
 
   const createFood = () => {
-    const x = Math.floor(Math.random() * CONSTANTS.CANVAS_SIZE[0] / CONSTANTS.SCALE);
-    const y = Math.floor(Math.random() * CONSTANTS.CANVAS_SIZE[1] / CONSTANTS.SCALE);
-    while(hasCollidedWithSnake([x,y]))
-  }
+    let x = randomFood(0);
+    let y = randomFood(1);
+    while (hasCollidedWithSnake([x, y])) {
+      x = randomFood(0);
+      y = randomFood(1);
+    }
+    return [x, y];
+  };
 
   const hasEatenFood = (head) => head[0] === food[0] && head[1] === food[1];
 
@@ -60,8 +65,12 @@ export default (props) => {
     if (hasCollided(newSnakeHead)) {
       resetGame();
     } else {
+      if (hasEatenFood(newSnakeHead)) {
+        setFood(createFood());
+      } else {
+        newSnake.pop();
+      }
       newSnake.unshift(newSnakeHead);
-      newSnake.pop();
       setSnake(newSnake);
     }
   };
