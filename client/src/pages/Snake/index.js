@@ -100,11 +100,14 @@ export default (props) => {
   }, [snake, food, gameOver]);
 
   return (
-    <div className="text-center container-fluid">
+    <div
+      className="text-center container-fluid bg-dark text-white"
+      style={{ height: "100vh" }}
+    >
       <h3>Snake</h3>
       <div>
         <canvas
-          style={{ border: "1px solid black" }}
+          style={{ border: "1px dashed white", borderRadius: "7px" }}
           ref={canvasRef}
           width={`${CONSTANTS.CANVAS_SIZE[0]}px`}
           height={`${CONSTANTS.CANVAS_SIZE[1]}px`}
