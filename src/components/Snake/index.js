@@ -100,7 +100,7 @@ export default (props) => {
   }, [snake, food, gameOver]);
 
   return (
-    <>
+    <div className="text-center container-fluid">
       <h3>Snake</h3>
       <div>
         <canvas
@@ -109,9 +109,21 @@ export default (props) => {
           width={`${CONSTANTS.CANVAS_SIZE[0]}px`}
           height={`${CONSTANTS.CANVAS_SIZE[1]}px`}
         />
-        <button onClick={() => startGame()}>Start Game</button>
-        <button onClick={() => resetGame()}>Reset</button>
       </div>
-    </>
+      <div>
+        <button
+          className="btn btn-primary border-light rounded-pill mx-3 mt-3 my-4 px-3"
+          onClick={() => startGame()}
+        >
+          Start
+        </button>
+        <button
+          className="btn btn-danger border-light mx-3 my-4 px-3"
+          onClick={() => resetGame()}
+        >
+          Reset
+        </button>
+      </div>
+    </div>
   );
 };
