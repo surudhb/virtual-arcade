@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useInterval } from "../../hooks";
 import CONSTANTS from "./constants";
+import io from "socket.io-client";
+
+let socket;
 
 export default (props) => {
   const canvasRef = useRef(null);
+
+  socket = io("http:///localhost:4000");
 
   const [snake, setSnake] = useState(CONSTANTS.SNAKE_START);
   const [food, setFood] = useState(CONSTANTS.FOOD_START);
