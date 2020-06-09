@@ -6,7 +6,7 @@ export default {
     [7, 7],
   ],
 
-  FOOD_START: [8, 3],
+  FOOD_START: [17, 17],
 
   SCALE: 20,
 

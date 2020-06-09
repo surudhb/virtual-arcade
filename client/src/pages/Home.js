@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
 export default () => {
+  const [name, setName] = useState("");
+
   return (
     <div
       style={{ height: "100vh" }}
@@ -11,7 +13,20 @@ export default () => {
         <h1>Welcome to the arcade!</h1>
         <ul className="list-group">
           <li className="list-group-item bg-dark border-secondary">
-            <Link to="/snake">Go to Snake</Link>
+            Play Snake
+            <input
+              type="text"
+              placeholder="name"
+              id="name"
+              className="form-control my-2"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Link to={{ pathname: "/snake", state: { name } }}>
+              <button disabled={!name} className="btn btn-dark" type="submit">
+                Enter
+              </button>
+            </Link>
           </li>
         </ul>
       </div>

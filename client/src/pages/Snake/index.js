@@ -8,16 +8,34 @@ let socket;
 export default (props) => {
   const canvasRef = useRef(null);
 
-  socket = io("http:///localhost:4000");
-
   const [snake, setSnake] = useState(CONSTANTS.SNAKE_START);
+  const [ID, setID] = useState("");
   const [food, setFood] = useState(CONSTANTS.FOOD_START);
   const [move, setMove] = useState([1, 0]);
   const [speed, setSpeed] = useState(null);
   const [gameOver, setGameOver] = useState(false);
 
+  socket = io.connect("localhost:4000");
+  const { name } = props.location.state;
+
+  useEffect(() => {
+    socket.emit(
+      `initSnakePlayer`,
+      { name, dims: CONSTANTS.CANVAS_SIZE[0] / CONSTANTS.SCALE },
+      (newSnake, newMove, id) => {
+        setSnake(newSnake);
+        setMove(newMove);
+        setID(id);
+        // cleanup
+        return () => {
+          socket.emit("disconnect");
+          socket.off();
+        };
+      }
+    );
+  }, [name]);
+
   const startGame = () => {
-    setMove([1, 0]);
     setGameOver(false);
     setSpeed(CONSTANTS.SPEED);
   };
@@ -78,6 +96,7 @@ export default (props) => {
       newSnake.unshift(newSnakeHead);
       setSnake(newSnake);
     }
+    socket.emit("snakeMoved", ID, newSnake);
   };
 
   onkeydown = (e) => {
@@ -102,6 +121,21 @@ export default (props) => {
     snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
     context.fillStyle = "lightblue";
     context.fillRect(food[0], food[1], 1, 1);
+    socket.on("fellowSnakeMoved", (fellowSnake) => {
+      context.setTransform(CONSTANTS.SCALE, 0, 0, CONSTANTS.SCALE, 0, 0);
+      context.clearRect(
+        0,
+        0,
+        CONSTANTS.CANVAS_SIZE[0],
+        CONSTANTS.CANVAS_SIZE[1]
+      );
+      context.fillStyle = "pink";
+      snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
+      context.fillStyle = fellowSnake.colour;
+      fellowSnake.snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
+      context.fillStyle = "lightblue";
+      context.fillRect(food[0], food[1], 1, 1);
+    });
   }, [snake, food, gameOver]);
 
   return (

@@ -1,15 +1,12 @@
 import React from "react";
 import { Snake, Home, NotFound } from "./pages";
-import { BrowserRouter, Route, Switch } from "react-router-dom";
+import { BrowserRouter, Route } from "react-router-dom";
 
-export default () => {
+export default (props) => {
   return (
     <BrowserRouter>
-      <Switch>
-        <Route path="/" exact component={Home} />
-        <Route path="/snake" exact component={Snake} />
-        <Route path="/" component={NotFound} />
-      </Switch>
+      <Route path="/" exact component={Home} />
+      <Route path="/snake" component={Snake} />
     </BrowserRouter>
   );
 };
