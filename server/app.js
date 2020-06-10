@@ -44,35 +44,38 @@ const generateRandomColor = () =>
   Math.floor(Math.random() * 16777215).toString(16);
 
 // maintain internal state of total players
-let players = [];
+let players = {};
 
-const getInitPosition = (playerNum, dim) => {
-  switch (playerNum) {
-    case 1:
-      return [
-        [1, 1],
-        [1, 0],
-      ];
-    case 2:
-      return [
-        [dim - 2, 1],
-        [dim - 2, 0],
-      ];
-    case 3:
-      return [
-        [1, dim - 2],
-        [1, dim - 1],
-      ];
-    case 4:
-      return [
-        [dim - 2, dim - 2],
-        [dim - 2, dim - 1],
-      ];
-  }
+let indx = 0;
+
+const getInitPosition = (dim) => {
+  const totalPlayers = Object.keys(players).length;
+  const startPositions = [
+    [
+      [1, 1],
+      [1, 0],
+    ],
+    [
+      [dim - 2, 1],
+      [dim - 2, 0],
+    ],
+    [
+      [1, dim - 2],
+      [1, dim - 1],
+    ],
+    [
+      [dim - 2, dim - 2],
+      [dim - 2, dim - 1],
+    ],
+  ];
+  const prevIndx = indx;
+  indx = (indx + 1) % totalPlayers;
+  return startPositions[prevIndx];
 };
 
-const getInitMove = (playerNum) => {
-  switch (playerNum) {
+const getInitMove = () => {
+  const totalPlayers = Object.keys(players).length;
+  switch (totalPlayers) {
     case 1:
     case 2:
       return [0, 1];
@@ -83,35 +86,34 @@ const getInitMove = (playerNum) => {
 };
 
 io.on("connection", (socket) => {
+  console.log(`${socket.id} connected`);
+  players[socket.id] = {
+    colour: `#${generateRandomColor()}`,
+  };
+  console.log(`after add count: ${Object.keys(players).length}`);
+
   socket.on("disconnect", () => {
     console.log(`${socket.id} disconnected`);
+    delete players[socket.id];
+    console.log(`after delete count: ${Object.keys(players).length}`);
   });
 
   // socket joined snake
-  socket.on("initSnakePlayer", ({ name, dims }, cb) => {
-    console.log(`created new player ${name}`);
-    const ID = uuid();
-    players.push({
-      name: name,
-      id: ID,
-      colour: `#${generateRandomColor()}`,
-      snake: [[]],
-    });
-    cb(
-      getInitPosition(players.length, dims),
-      getInitMove(players.length, dims),
-      ID
-    );
+  socket.on("initSnakePlayer", (dims, cb) => {
+    const playerCount = Object.keys(players).length;
+    console.log(playerCount);
+    cb(getInitPosition(dims), getInitMove(dims));
   });
 
   // received a player's move from server
   socket.on("snakeMoved", (ID, snake) => {
-    console.log(`player: ${ID} moved`);
-    const { colour } = players.find((p) => p.id === ID);
+    console.log(`ID in snakeMoved: ${ID}`);
+    console.log(Object.keys(players).length);
+    const colour = players[ID].colour;
     socket.broadcast.emit("fellowSnakeMoved", { colour, snake });
   });
 });
 
-http.listen(PORT, () => {
+http.listen(PORT, `192.168.0.11`, () => {
   console.log(`Server listening on port ${PORT}`);
 });

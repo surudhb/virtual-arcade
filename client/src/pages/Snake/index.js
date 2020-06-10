@@ -15,17 +15,19 @@ export default (props) => {
   const [speed, setSpeed] = useState(null);
   const [gameOver, setGameOver] = useState(false);
 
-  socket = io.connect("localhost:4000");
   const { name } = props.location.state;
 
   useEffect(() => {
+    socket = io.connect("192.168.0.11:4000");
+    setID(socket.id);
     socket.emit(
       `initSnakePlayer`,
-      { name, dims: CONSTANTS.CANVAS_SIZE[0] / CONSTANTS.SCALE },
-      (newSnake, newMove, id) => {
+      CONSTANTS.CANVAS_SIZE[0] / CONSTANTS.SCALE,
+      (newSnake, newMove) => {
+        console.log(newSnake);
+        console.log(newMove);
         setSnake(newSnake);
         setMove(newMove);
-        setID(id);
         // cleanup
         return () => {
           socket.emit("disconnect");
@@ -96,7 +98,8 @@ export default (props) => {
       newSnake.unshift(newSnakeHead);
       setSnake(newSnake);
     }
-    socket.emit("snakeMoved", ID, newSnake);
+    console.log(`calling this`);
+    socket.emit("snakeMoved", socket.id, newSnake);
   };
 
   onkeydown = (e) => {
@@ -131,10 +134,10 @@ export default (props) => {
       );
       context.fillStyle = "pink";
       snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
-      context.fillStyle = fellowSnake.colour;
-      fellowSnake.snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
       context.fillStyle = "lightblue";
       context.fillRect(food[0], food[1], 1, 1);
+      context.fillStyle = fellowSnake.colour;
+      fellowSnake.snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
     });
   }, [snake, food, gameOver]);
 

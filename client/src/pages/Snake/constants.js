@@ -10,7 +10,7 @@ export default {
 
   SCALE: 20,
 
-  SPEED: 85,
+  SPEED: 150,
 
   DIRECTIONS: {
     38: [0, -1], // up relative to corner coordinates
