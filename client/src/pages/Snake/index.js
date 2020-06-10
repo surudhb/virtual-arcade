@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useInterval } from "../../hooks";
-import CONSTANTS from "./constants";
+import {
+  CANVAS_SIZE,
+  SCALE,
+  SNAKE_START,
+  FOOD_START,
+  SPEED,
+  DIRECTIONS,
+} from "./constants";
 import io from "socket.io-client";
 
 let socket;
@@ -8,9 +15,11 @@ let socket;
 export default (props) => {
   const canvasRef = useRef(null);
 
-  const [snake, setSnake] = useState(CONSTANTS.SNAKE_START);
+  const dims = CANVAS_SIZE[0] / SCALE;
+
+  const [snake, setSnake] = useState(SNAKE_START);
   const [ID, setID] = useState("");
-  const [food, setFood] = useState(CONSTANTS.FOOD_START);
+  const [food, setFood] = useState(FOOD_START);
   const [move, setMove] = useState([1, 0]);
   const [speed, setSpeed] = useState(null);
   const [gameOver, setGameOver] = useState(false);
@@ -20,40 +29,34 @@ export default (props) => {
   useEffect(() => {
     socket = io.connect("192.168.0.11:4000");
     setID(socket.id);
-    socket.emit(
-      `initSnakePlayer`,
-      CONSTANTS.CANVAS_SIZE[0] / CONSTANTS.SCALE,
-      (newSnake, newMove) => {
-        console.log(newSnake);
-        console.log(newMove);
-        setSnake(newSnake);
-        setMove(newMove);
-        // cleanup
-        return () => {
-          socket.emit("disconnect");
-          socket.off();
-        };
-      }
-    );
-  }, [name]);
+    socket.emit(`initSnakePlayer`, dims, (newSnake, newMove) => {
+      setSnake(newSnake);
+      setMove(newMove);
+      // cleanup
+      return () => {
+        socket.emit("disconnect");
+        socket.off();
+      };
+    });
+  }, [name, dims]);
 
   const startGame = () => {
-    setGameOver(false);
-    setSpeed(CONSTANTS.SPEED);
+    setSpeed(SPEED);
   };
 
   const resetGame = () => {
-    setSnake(CONSTANTS.SNAKE_START);
-    setFood(CONSTANTS.FOOD_START);
     setSpeed(null);
     setGameOver(true);
-    setMove([1, 0]);
+    socket.emit(`reset`, dims, (newSnake, newMove) => {
+      setMove(newMove);
+      setSnake(newSnake);
+    });
   };
 
-  const moveSnake = (keyCode) => setMove(CONSTANTS.DIRECTIONS[keyCode]);
+  const moveSnake = (keyCode) => setMove(DIRECTIONS[keyCode]);
 
   const randomFood = (idx) =>
-    Math.floor((Math.random() * CONSTANTS.CANVAS_SIZE[idx]) / CONSTANTS.SCALE);
+    Math.floor((Math.random() * CANVAS_SIZE[idx]) / SCALE);
 
   const createFood = () => {
     let x = randomFood(0);
@@ -68,7 +71,7 @@ export default (props) => {
   const hasEatenFood = (head) => head[0] === food[0] && head[1] === food[1];
 
   const isAxisCollision = (axis, idx) =>
-    axis < 0 || axis * CONSTANTS.SCALE >= CONSTANTS.CANVAS_SIZE[idx];
+    axis < 0 || axis * SCALE >= CANVAS_SIZE[idx];
 
   const hasCollidedWithWall = (head) =>
     isAxisCollision(head[0], 0) || isAxisCollision(head[1], 1);
@@ -116,22 +119,28 @@ export default (props) => {
 
   useInterval(gameLoop, speed);
 
+  // useEffect(() => {
+  //   const context = canvasRef.current.getContext("2d");
+  //   context.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+  //   context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1]);
+  //   context.fillStyle = "pink";
+  //   snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
+  //   context.fillStyle = "lightblue";
+  //   context.fillRect(food[0], food[1], 1, 1);
+  // }, [gameOver]);
+
   useEffect(() => {
     const context = canvasRef.current.getContext("2d");
-    context.setTransform(CONSTANTS.SCALE, 0, 0, CONSTANTS.SCALE, 0, 0);
-    context.clearRect(0, 0, CONSTANTS.CANVAS_SIZE[0], CONSTANTS.CANVAS_SIZE[1]);
+    context.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+    context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1]);
     context.fillStyle = "pink";
     snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
     context.fillStyle = "lightblue";
     context.fillRect(food[0], food[1], 1, 1);
     socket.on("fellowSnakeMoved", (fellowSnake) => {
-      context.setTransform(CONSTANTS.SCALE, 0, 0, CONSTANTS.SCALE, 0, 0);
-      context.clearRect(
-        0,
-        0,
-        CONSTANTS.CANVAS_SIZE[0],
-        CONSTANTS.CANVAS_SIZE[1]
-      );
+      // const context = canvasRef.current.getContext("2d");
+      context.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+      context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1]);
       context.fillStyle = "pink";
       snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
       context.fillStyle = "lightblue";
@@ -139,7 +148,7 @@ export default (props) => {
       context.fillStyle = fellowSnake.colour;
       fellowSnake.snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
     });
-  }, [snake, food, gameOver]);
+  }, [snake, food]);
 
   return (
     <div
@@ -151,8 +160,8 @@ export default (props) => {
         <canvas
           style={{ border: "1px dashed white", borderRadius: "7px" }}
           ref={canvasRef}
-          width={`${CONSTANTS.CANVAS_SIZE[0]}px`}
-          height={`${CONSTANTS.CANVAS_SIZE[1]}px`}
+          width={`${CANVAS_SIZE[0]}px`}
+          height={`${CANVAS_SIZE[1]}px`}
         />
       </div>
       <div>

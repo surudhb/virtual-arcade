@@ -112,6 +112,12 @@ io.on("connection", (socket) => {
     const colour = players[ID].colour;
     socket.broadcast.emit("fellowSnakeMoved", { colour, snake });
   });
+
+  // socket's game over
+  socket.on("reset", (dims, cb) => {
+    console.log(`socket called reset`);
+    cb(getInitPosition(dims), getInitMove(dims));
+  });
 });
 
 http.listen(PORT, `192.168.0.11`, () => {
