@@ -45,11 +45,12 @@ const generateRandomColor = () =>
 
 // maintain internal state of total players
 let players = {};
+let positionMap = {};
 
 let indx = 0;
 
-const getInitPosition = (dim) => {
-  const totalPlayers = Object.keys(players).length;
+// dim should really be a server-side constant, so should all constants
+const getInitPosition = (id, dim) => {
   const startPositions = [
     [
       [1, 1],
@@ -68,19 +69,22 @@ const getInitPosition = (dim) => {
       [dim - 2, dim - 1],
     ],
   ];
-  const prevIndx = indx;
-  indx = (indx + 1) % totalPlayers;
-  return startPositions[prevIndx];
+  if (Object.keys(positionMap).includes(id))
+    return startPositions[positionMap[id]];
+  while (Object.values(positionMap).includes(indx)) {
+    indx = (indx + 1) % startPositions.length;
+  }
+  positionMap[id] = indx;
+  return startPositions[indx];
 };
 
 const getInitMove = () => {
-  const totalPlayers = Object.keys(players).length;
-  switch (totalPlayers) {
+  switch (indx) {
+    case 0:
     case 1:
-    case 2:
       return [0, 1];
+    case 2:
     case 3:
-    case 4:
       return [0, -1];
   }
 };
@@ -95,28 +99,29 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log(`${socket.id} disconnected`);
     delete players[socket.id];
+    delete positionMap[socket.id];
     console.log(`after delete count: ${Object.keys(players).length}`);
   });
 
   // socket joined snake
-  socket.on("initSnakePlayer", (dims, cb) => {
+  socket.on("initSnakePlayer", ({ name, dims }, cb) => {
+    console.log(`${name} joined snake!`);
     const playerCount = Object.keys(players).length;
     console.log(playerCount);
-    cb(getInitPosition(dims), getInitMove(dims));
+    cb(getInitPosition(socket.id, dims), getInitMove(socket.id, dims));
   });
 
   // received a player's move from server
-  socket.on("snakeMoved", (ID, snake) => {
-    console.log(`ID in snakeMoved: ${ID}`);
-    console.log(Object.keys(players).length);
-    const colour = players[ID].colour;
+  socket.on("snakeMoved", (snake) => {
+    console.log(`snakeMoved called by: ${socket.id}`);
+    const colour = players[socket.id].colour;
     socket.broadcast.emit("fellowSnakeMoved", { colour, snake });
   });
 
   // socket's game over
   socket.on("reset", (dims, cb) => {
-    console.log(`socket called reset`);
-    cb(getInitPosition(dims), getInitMove(dims));
+    console.log(`${socket.id} called reset`);
+    cb(getInitPosition(socket.id, dims), getInitMove(socket.id, dims));
   });
 });
 

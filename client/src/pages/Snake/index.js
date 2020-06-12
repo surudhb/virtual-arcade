@@ -18,7 +18,6 @@ export default (props) => {
   const dims = CANVAS_SIZE[0] / SCALE;
 
   const [snake, setSnake] = useState(SNAKE_START);
-  const [ID, setID] = useState("");
   const [food, setFood] = useState(FOOD_START);
   const [move, setMove] = useState([1, 0]);
   const [speed, setSpeed] = useState(null);
@@ -28,8 +27,7 @@ export default (props) => {
 
   useEffect(() => {
     socket = io.connect("192.168.0.11:4000");
-    setID(socket.id);
-    socket.emit(`initSnakePlayer`, dims, (newSnake, newMove) => {
+    socket.emit(`initSnakePlayer`, { name, dims }, (newSnake, newMove) => {
       setSnake(newSnake);
       setMove(newMove);
       // cleanup
@@ -50,6 +48,7 @@ export default (props) => {
     socket.emit(`reset`, dims, (newSnake, newMove) => {
       setMove(newMove);
       setSnake(newSnake);
+      socket.emit(`snakeMoved`, newSnake);
     });
   };
 
@@ -100,9 +99,8 @@ export default (props) => {
       }
       newSnake.unshift(newSnakeHead);
       setSnake(newSnake);
+      socket.emit("snakeMoved", newSnake);
     }
-    console.log(`calling this`);
-    socket.emit("snakeMoved", socket.id, newSnake);
   };
 
   onkeydown = (e) => {
@@ -119,16 +117,6 @@ export default (props) => {
 
   useInterval(gameLoop, speed);
 
-  // useEffect(() => {
-  //   const context = canvasRef.current.getContext("2d");
-  //   context.setTransform(SCALE, 0, 0, SCALE, 0, 0);
-  //   context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1]);
-  //   context.fillStyle = "pink";
-  //   snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
-  //   context.fillStyle = "lightblue";
-  //   context.fillRect(food[0], food[1], 1, 1);
-  // }, [gameOver]);
-
   useEffect(() => {
     const context = canvasRef.current.getContext("2d");
     context.setTransform(SCALE, 0, 0, SCALE, 0, 0);
@@ -138,7 +126,7 @@ export default (props) => {
     context.fillStyle = "lightblue";
     context.fillRect(food[0], food[1], 1, 1);
     socket.on("fellowSnakeMoved", (fellowSnake) => {
-      // const context = canvasRef.current.getContext("2d");
+      console.log(`fellow snake moved`);
       context.setTransform(SCALE, 0, 0, SCALE, 0, 0);
       context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1]);
       context.fillStyle = "pink";

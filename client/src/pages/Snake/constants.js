@@ -9,7 +9,7 @@ const FOOD_START = [17, 17];
 
 const SCALE = 20;
 
-const SPEED = 120;
+const SPEED = 90;
 
 const DIRECTIONS = {
   38: [0, -1], // up relative to top-left canvas corner
