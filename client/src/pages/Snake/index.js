@@ -1,13 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useInterval } from "../../hooks";
-import {
-  CANVAS_SIZE,
-  SCALE,
-  SNAKE_START,
-  FOOD_START,
-  SPEED,
-  DIRECTIONS,
-} from "./constants";
+import { CANVAS_SIZE, SCALE, FOOD_START, SPEED, DIRECTIONS } from "./constants";
 import io from "socket.io-client";
 
 let socket;
@@ -17,7 +10,7 @@ export default (props) => {
 
   const dims = CANVAS_SIZE[0] / SCALE;
 
-  const [snake, setSnake] = useState(SNAKE_START);
+  const [snake, setSnake] = useState();
   const [food, setFood] = useState(FOOD_START);
   const [move, setMove] = useState([1, 0]);
   const [speed, setSpeed] = useState(null);
@@ -30,6 +23,7 @@ export default (props) => {
     socket.emit(`initSnakePlayer`, { name, dims }, (newSnake, newMove) => {
       setSnake(newSnake);
       setMove(newMove);
+      socket.emit(`snakeMoved`, newSnake);
       // cleanup
       return () => {
         socket.emit("disconnect");
@@ -121,20 +115,28 @@ export default (props) => {
     const context = canvasRef.current.getContext("2d");
     context.setTransform(SCALE, 0, 0, SCALE, 0, 0);
     context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1]);
-    context.fillStyle = "pink";
-    snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
-    context.fillStyle = "lightblue";
-    context.fillRect(food[0], food[1], 1, 1);
-    socket.on("fellowSnakeMoved", (fellowSnake) => {
+    if (snake) {
+      context.fillStyle = "pink";
+      snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
+    }
+    if (food) {
+      context.fillStyle = "lightblue";
+      context.fillRect(food[0], food[1], 1, 1);
+    }
+    socket.on("fellowSnakeMoved", (otherPlayer) => {
       console.log(`fellow snake moved`);
       context.setTransform(SCALE, 0, 0, SCALE, 0, 0);
       context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1]);
-      context.fillStyle = "pink";
-      snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
-      context.fillStyle = "lightblue";
-      context.fillRect(food[0], food[1], 1, 1);
-      context.fillStyle = fellowSnake.colour;
-      fellowSnake.snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
+      if (snake) {
+        context.fillStyle = "pink";
+        snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
+      }
+      if (food) {
+        context.fillStyle = "lightblue";
+        context.fillRect(food[0], food[1], 1, 1);
+      }
+      context.fillStyle = otherPlayer.colour;
+      otherPlayer.snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
     });
   }, [snake, food]);
 

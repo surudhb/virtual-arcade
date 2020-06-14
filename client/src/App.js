@@ -1,5 +1,5 @@
 import React from "react";
-import { Snake, Home, NotFound } from "./pages";
+import { Snake, Snake2, Home } from "./pages";
 import { BrowserRouter, Route } from "react-router-dom";
 
 export default (props) => {
@@ -7,6 +7,7 @@ export default (props) => {
     <BrowserRouter>
       <Route path="/" exact component={Home} />
       <Route path="/snake" component={Snake} />
+      <Route path="/snake2" component={Snake2} />
     </BrowserRouter>
   );
 };

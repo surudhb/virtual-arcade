@@ -22,7 +22,7 @@ export default () => {
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-            <Link to={{ pathname: "/snake", state: { name } }}>
+            <Link to={{ pathname: "/snake2", state: { name } }}>
               <button disabled={!name} className="btn btn-dark" type="submit">
                 Enter
               </button>

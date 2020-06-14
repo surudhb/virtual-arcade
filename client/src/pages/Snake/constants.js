@@ -1,13 +1,8 @@
 const CANVAS_SIZE = [700, 700];
 
-const SNAKE_START = [
-  [8, 7],
-  [7, 7],
-];
-
 const FOOD_START = [17, 17];
 
-const SCALE = 20;
+const SCALE = 21;
 
 const SPEED = 90;
 
@@ -18,4 +13,4 @@ const DIRECTIONS = {
   39: [1, 0], // right
 };
 
-export { CANVAS_SIZE, SNAKE_START, FOOD_START, SCALE, SPEED, DIRECTIONS };
+export { CANVAS_SIZE, FOOD_START, SCALE, SPEED, DIRECTIONS };
