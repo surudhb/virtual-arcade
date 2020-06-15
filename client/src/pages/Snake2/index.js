@@ -15,15 +15,24 @@ export default (props) => {
 
   const name = props.location.state;
 
-  socket.emit(`initPlayer`, (newSnake, newMove, otherSnakes) => {
-    setMove(newMove);
-    setSnake(newSnake);
-  });
+  useEffect(() => {
+    socket.emit(`initPlayer`, name, (newSnake, newMove, otherSnakes) => {
+      setMove(newMove);
+      setSnake(newSnake);
+      setOtherSnakes(otherSnakes);
+    });
+
+    return () => socket.emit(`deletePlayer`, name);
+  }, [name]);
 
   // cast vote to start
   // game starts after everybody votes to start
-  const voteToStart = () => {
-    socket.emit(`voteToStart`);
+  const castVote = () => {
+    socket.emit(`addVote`, name);
+  };
+
+  const retractVote = () => {
+    socket.emit(`removeVote`, name);
   };
 
   // each snake has an internal representation of all snakes
