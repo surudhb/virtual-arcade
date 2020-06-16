@@ -3,7 +3,7 @@ import { useInterval } from "../../hooks";
 import io from "socket.io-client";
 import { DIRECTIONS, CANVAS_SIZE, SCALE } from "../Snake/constants";
 
-const socket = io.connect(`192.168.0.11:4000`);
+const socket = io.connect(`localhost:4000`);
 
 // snake = id : { snake, colour }
 
@@ -19,7 +19,7 @@ export default (props) => {
 
   const [gameOver, setGameOver] = useState(false);
 
-  const [newPlayer, setNewPlayer] = useState();
+  const [newPlayer, setNewPlayer] = useState({});
   const [votes, setVotes] = useState(0);
   const [hasVoted, setHasVoted] = useState(false);
   const [votingFinished, setVotingFinished] = useState(false);
@@ -36,44 +36,40 @@ export default (props) => {
     });
 
     return () => {
-      socket.disconnect();
+      socket.off(`initPlayer`);
     };
-  }, []);
+  }, [name]);
 
   // attaching listener for player leaving
   useEffect(() => {
     socket.on(`playerLeft`, (oldPlayerID) => {
-      console.log(otherSnakes.length);
+      console.log(`player left: ${oldPlayerID}`);
       const filteredSnakes = otherSnakes.filter((s) => s.id !== oldPlayerID);
       setOtherSnakes(filteredSnakes);
-      console.log(otherSnakes.length);
     });
 
     return () => socket.off(`playerLeft`);
-  }, [otherSnakes]);
+  }, []);
 
   // listener for new player joined
   useEffect(() => {
     socket.on(`newPlayerJoined`, (newPlayer) => {
-      console.log(`new player joined ${otherSnakes.length}`);
-      setNewPlayer(newPlayer);
-      // add new player to otherplayers arr
       otherSnakes.push(newPlayer);
-      console.log(`new player joined ${otherSnakes.length}`);
+      setNewPlayer(newPlayer);
     });
-
     return () => socket.off(`newPlayerJoined`);
-  }, [otherSnakes]);
+  });
 
   // listener for updating votes on screen
   useEffect(() => {
-    socket.on(`updateVotes`, (newTotal) => {
+    socket.on(`updateVotes`, (subtract = false) => {
       console.log(`updated votes`);
-      setVotes(newTotal);
+      if (subtract) setVotes(votes - 1);
+      else setVotes(votes + 1);
     });
 
     return () => socket.off(`updateVotes`);
-  }, []);
+  });
 
   // listener for starting game
   useEffect(() => {
@@ -111,7 +107,7 @@ export default (props) => {
   const castVote = () => {
     if (!hasVoted) {
       setVotes(votes + 1);
-      socket.emit(`addVote`, name, votes);
+      socket.emit(`addVote`, name);
       setHasVoted(true);
     } else {
       console.log(`Vote already cast.`);
@@ -136,7 +132,10 @@ export default (props) => {
       </div>
       <div>
         <canvas
-          style={{ border: "1px dashed white", borderRadius: "7px" }}
+          style={{
+            border: "1px dashed white",
+            borderRadius: "7px",
+          }}
           ref={canvasRef}
           width={`${CANVAS_SIZE[0]}px`}
           height={`${CANVAS_SIZE[1]}px`}

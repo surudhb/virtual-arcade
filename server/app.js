@@ -92,7 +92,9 @@ app.get("/", (req, res) => res.send(`<h1>Listening....</h1>`));
 
 // id : {snake, colour}
 let players = [];
+let votes = 0;
 const positionMap = {};
+let hasVoted = [];
 const DIM = 700;
 const MAX_VOTES = 4;
 
@@ -133,6 +135,7 @@ const getStartDirection = (index) => (index <= 1 ? [0, 1] : [0, -1]);
 // NEW IMPLEMENTATION
 io.on(`connection`, (socket) => {
   console.log(`${socket.id} connected`);
+  // console.log(socket.handshake);
   players.push({
     id: socket.id,
     snake: null,
@@ -143,6 +146,8 @@ io.on(`connection`, (socket) => {
   socket.on(`disconnect`, () => {
     console.log(`${socket.id} disconnected`);
     players = players.filter((p) => p.id !== socket.id);
+    if (hasVoted.includes(socket.id))
+      socket.broadcast.emit(`updateVotes`, true);
     delete positionMap[socket.id];
     socket.broadcast.emit(`playerLeft`, socket.id);
   });
@@ -164,16 +169,18 @@ io.on(`connection`, (socket) => {
     socket.broadcast.emit(`newPlayerJoined`, currPlayer);
   });
 
-  socket.on(`addVote`, (name, votes) => {
+  socket.on(`addVote`, (name) => {
+    hasVoted.push(socket.id);
     console.log(`${name} has voted to start game`);
-    socket.broadcast.emit(`updateVotes`, votes);
-    if (votes == MAX_VOTES) {
+    socket.broadcast.emit(`updateVotes`);
+    if (votes == players.length) {
       // io.emit start game
-      setTimeout(() => io.emit(`startGame`), 3000);
+      console.log(`emiting start game`);
+      // setTimeout(() => io.emit(`startGame`), 3000);
     }
   });
 });
 
-http.listen(PORT, `192.168.0.11`, () => {
+http.listen(PORT, `localhost`, () => {
   console.log(`Server listening on port ${PORT}`);
 });
