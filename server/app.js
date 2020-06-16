@@ -91,8 +91,10 @@ app.get("/", (req, res) => res.send(`<h1>Listening....</h1>`));
 // });
 
 // id : {snake, colour}
-const players = {};
+let players = [];
+const positionMap = {};
 const DIM = 700;
+const MAX_VOTES = 4;
 
 const startPositions = [
   [
@@ -113,9 +115,12 @@ const startPositions = [
   ],
 ];
 
-const positionMap = {};
+const generateRandomColor = () =>
+  Math.floor(Math.random() * 16777215).toString(16);
 
-const positionTaken = (index) => Object.values(positionMap).contains(index);
+// generate food that checks that it does not collide with existing snakes
+
+const positionTaken = (index) => Object.values(positionMap).includes(index);
 
 const getUniqueStart = () => {
   let index = 0;
@@ -128,16 +133,44 @@ const getStartDirection = (index) => (index <= 1 ? [0, 1] : [0, -1]);
 // NEW IMPLEMENTATION
 io.on(`connection`, (socket) => {
   console.log(`${socket.id} connected`);
-  players[socket.id] = { snake: null, color: ``, name: `` };
+  players.push({
+    id: socket.id,
+    snake: null,
+    color: `#${generateRandomColor()}`,
+    name: ``,
+  });
+
+  socket.on(`disconnect`, () => {
+    console.log(`${socket.id} disconnected`);
+    players = players.filter((p) => p.id !== socket.id);
+    delete positionMap[socket.id];
+    socket.broadcast.emit(`playerLeft`, socket.id);
+  });
 
   socket.on(`initPlayer`, (name, cb) => {
-    players[socket.id].name = name;
+    console.log(`initializing player ${socket.id}`);
+    players = players.map((p) => {
+      p.name = p.id === socket.id ? name : p.name;
+      return p;
+    });
     const startIndex = getUniqueStart();
-    const startPosition = startPositions[startIndex];
+    const startSnake = startPositions[startIndex];
     const startDirection = getStartDirection(startIndex);
-    const otherPlayers = 
+    const otherPlayers = players.filter((p) => p.id !== socket.id);
+    cb(startSnake, startDirection, otherPlayers);
 
     // broadcast to other players to add this player
+    const currPlayer = players.filter((p) => p.id === socket.id)[0];
+    socket.broadcast.emit(`newPlayerJoined`, currPlayer);
+  });
+
+  socket.on(`addVote`, (name, votes) => {
+    console.log(`${name} has voted to start game`);
+    socket.broadcast.emit(`updateVotes`, votes);
+    if (votes == MAX_VOTES) {
+      // io.emit start game
+      setTimeout(() => io.emit(`startGame`), 3000);
+    }
   });
 });
 

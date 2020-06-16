@@ -18,7 +18,7 @@ export default () => {
               type="text"
               placeholder="name"
               id="name"
-              className="form-control my-2"
+              className="form-control my-2 w-50 mx-auto"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
