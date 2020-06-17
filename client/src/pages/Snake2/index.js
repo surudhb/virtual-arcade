@@ -11,6 +11,7 @@ export default (props) => {
   const canvasRef = useRef(null);
 
   const [snake, setSnake] = useState();
+  const [color, setColor] = useState();
   const [otherSnakes, setOtherSnakes] = useState([]);
 
   const [food, setFood] = useState();
@@ -28,12 +29,18 @@ export default (props) => {
 
   // initing player on component mount
   useEffect(() => {
-    socket.emit(`initPlayer`, name, (startSnake, startMove, otherSnakes) => {
-      console.log(`initing player`);
-      setMove(startMove);
-      setSnake(startSnake);
-      setOtherSnakes(otherSnakes);
-    });
+    socket.emit(
+      `initPlayer`,
+      name,
+      (startSnake, startMove, otherSnakes, color, startVotes) => {
+        console.log(`initing player`);
+        setMove(startMove);
+        setSnake(startSnake);
+        setOtherSnakes(otherSnakes);
+        setColor(color);
+        setVotes(startVotes);
+      }
+    );
 
     return () => {
       socket.off(`initPlayer`);
@@ -49,31 +56,35 @@ export default (props) => {
     });
 
     return () => socket.off(`playerLeft`);
-  }, []);
+  }, [otherSnakes]);
 
   // listener for new player joined
   useEffect(() => {
     socket.on(`newPlayerJoined`, (newPlayer) => {
+      console.log(`new player joined`);
       otherSnakes.push(newPlayer);
       setNewPlayer(newPlayer);
     });
     return () => socket.off(`newPlayerJoined`);
-  });
+  }, [otherSnakes]);
 
   // listener for updating votes on screen
   useEffect(() => {
     socket.on(`updateVotes`, (subtract = false) => {
       console.log(`updated votes`);
-      if (subtract) setVotes(votes - 1);
+      if (subtract) setVotes(Math.max(votes - 1, 0));
       else setVotes(votes + 1);
     });
 
     return () => socket.off(`updateVotes`);
-  });
+  }, [votes]);
 
   // listener for starting game
   useEffect(() => {
-    socket.on(`startGame`, () => startGame());
+    socket.on(`startGame`, () => {
+      console.log(`starting game...`);
+      setTimeout(startGame, 3000);
+    });
     return () => socket.off(`startGame`);
   }, []);
 
@@ -83,9 +94,20 @@ export default (props) => {
     const context = canvasRef.current.getContext(`2d`);
     context.setTransform(SCALE, 0, 0, SCALE, 0, 0);
     context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1]);
-  }, [snake, food, otherSnakes]);
+    context.fillStyle = color;
+    if (snake) snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
+    if (otherSnakes) {
+      otherSnakes.forEach((s) => {
+        context.fillStyle = s.color;
+        if (s.snake) s.snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
+      });
+    }
+  }, [snake, food, otherSnakes, newPlayer]);
 
-  const startGame = () => setSpeed(90);
+  const startGame = () => {
+    console.log(`started game.`);
+    setSpeed(90);
+  };
 
   const moveSnake = (keyCode) => setMove(DIRECTIONS[keyCode]);
 
@@ -98,9 +120,11 @@ export default (props) => {
   };
 
   // function that updates snake every x seconds
-  const gameLoop = () => {};
+  const gameLoop = () => {
+    console.log(`game running ${new Date().toDateString}`);
+  };
 
-  // useInterval(gameLoop, speed);
+  useInterval(gameLoop, speed);
 
   // cast vote to start
   // game starts after everybody votes to start
@@ -119,6 +143,7 @@ export default (props) => {
       className="container-fluid text-center bg-dark text-white"
       style={{ height: "100vh" }}
     >
+      <p>{socket.id}</p>
       <div>
         <button
           className="btn btn-primary border-light rounded-pill mx-3 my-4 px-3"
