@@ -2,9 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useInterval } from "../../hooks";
 import io from "socket.io-client";
 import { DIRECTIONS, CANVAS_SIZE, SCALE, FOOD_START } from "../Snake/constants";
-// snake = id : { snake, colour }
 
-const socket = io.connect(`localhost:4000`);
+const socket = io.connect(`localhost:4000`, { forceNew: true });
 
 export default (props) => {
   const canvasRef = useRef(null);
@@ -12,6 +11,8 @@ export default (props) => {
   const [snake, setSnake] = useState();
   const [color, setColor] = useState();
   const [otherSnakes, setOtherSnakes] = useState([]);
+
+  const [score, setScore] = useState(0);
 
   const [food, setFood] = useState(FOOD_START);
   const [move, setMove] = useState();
@@ -30,9 +31,9 @@ export default (props) => {
     socket.emit(
       `initPlayer`,
       name,
-      (startSnake, startMove, otherSnakes, color, startVotes) => {
+      ({ startSnake, startDirection, color }, otherSnakes, startVotes) => {
         console.log(`initing player`);
-        setMove(startMove);
+        setMove(startDirection);
         setSnake(startSnake);
         setOtherSnakes(otherSnakes);
         setColor(color);
@@ -43,7 +44,7 @@ export default (props) => {
     return () => {
       socket.off(`initPlayer`);
     };
-  }, [name]);
+  }, [name, setColor]);
 
   // attaching listener for player leaving
   useEffect(() => {
@@ -119,6 +120,7 @@ export default (props) => {
 
   const endGame = () => {
     setSpeed(null);
+    setScore(0);
     alert(`Game over`);
   };
 
@@ -157,6 +159,7 @@ export default (props) => {
 
   // function that updates snake every x seconds
   const gameLoop = () => {
+    setScore(score + 1);
     console.log(`game running ${new Date().toDateString}`);
     const newSnake = JSON.parse(JSON.stringify(snake));
     const newSnakeHead = [newSnake[0][0] + move[0], newSnake[0][1] + move[1]];
@@ -194,6 +197,16 @@ export default (props) => {
       style={{ height: "100vh" }}
     >
       <p>{socket.id}</p>
+      <div>
+        <p>
+          My Color
+          <div
+            style={{ background: color, height: `50px`, width: `50px` }}
+            className="m-auto"
+          ></div>
+        </p>
+        <div>Score: {score}</div>
+      </div>
       <div>
         <button
           className="btn btn-primary border-light rounded-pill mx-3 my-4 px-3"

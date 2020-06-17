@@ -1,8 +1,8 @@
-const CANVAS_SIZE = [700, 700];
+const CANVAS_SIZE = [750, 750];
 
-const FOOD_START = [17, 17];
+const FOOD_START = [19, 19];
 
-const SCALE = 21;
+const SCALE = 20;
 
 const SPEED = 150;
 

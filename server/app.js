@@ -95,7 +95,7 @@ let players = [];
 let votes = 0;
 const positionMap = {};
 let hasVoted = [];
-const DIM = Math.floor(700 / 21);
+const DIM = 38;
 
 const startPositions = [
   [
@@ -140,6 +140,8 @@ io.on(`connection`, (socket) => {
     snake: null,
     color: `#${generateRandomColor()}`,
     name: ``,
+    startDirection: null,
+    startSnake: null,
   });
 
   socket.on(`disconnect`, () => {
@@ -153,27 +155,27 @@ io.on(`connection`, (socket) => {
     io.emit(`playerLeft`, socket.id);
   });
 
+  socket.on(`reconnect`, (num) => {
+    console.log(`${scoket.id} attempting to reconnect`);
+  });
+
   socket.on(`initPlayer`, (name, cb) => {
     console.log(`initializing player ${socket.id}`);
-    players.map((p) => {
-      p.name = p.id === socket.id ? name : p.name;
-      return p;
-    });
     const startIndex = getUniqueStart(socket.id);
     const startSnake = startPositions[startIndex];
-    console.log(startSnake);
     const startDirection = getStartDirection(startIndex);
     players.map((p) => {
       if (p.id === socket.id) {
+        p.name = name;
         p.snake = startSnake;
-      } else {
-        p;
+        p.startSnake = startSnake;
+        p.startDirection = startDirection;
       }
+      return p;
     });
     const otherPlayers = players.filter((p) => p.id !== socket.id);
     const currPlayer = players.filter((p) => p.id === socket.id)[0];
-    console.log(currPlayer.color);
-    cb(startSnake, startDirection, otherPlayers, currPlayer.color, votes);
+    cb(currPlayer, otherPlayers, votes);
 
     // broadcast to other players to add this player
     console.log(currPlayer.snake);
