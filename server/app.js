@@ -150,7 +150,7 @@ io.on(`connection`, (socket) => {
       socket.broadcast.emit(`updateVotes`, true);
     }
     delete positionMap[socket.id];
-    socket.broadcast.emit(`playerLeft`, socket.id);
+    io.emit(`playerLeft`, socket.id);
   });
 
   socket.on(`initPlayer`, (name, cb) => {
@@ -172,7 +172,7 @@ io.on(`connection`, (socket) => {
     });
     const otherPlayers = players.filter((p) => p.id !== socket.id);
     const currPlayer = players.filter((p) => p.id === socket.id)[0];
-
+    console.log(currPlayer.color);
     cb(startSnake, startDirection, otherPlayers, currPlayer.color, votes);
 
     // broadcast to other players to add this player
