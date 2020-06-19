@@ -3,7 +3,7 @@ import { useInterval } from "../../hooks";
 import io from "socket.io-client";
 import { DIRECTIONS, CANVAS_SIZE, SCALE, FOOD_START } from "../Snake/constants";
 
-const socket = io.connect(`localhost:4000`, { forceNew: true });
+const socket = io.connect(`localhost:4000`, { forceNew: false });
 
 export default (props) => {
   const canvasRef = useRef(null);
@@ -25,14 +25,16 @@ export default (props) => {
   const [hasVoted, setHasVoted] = useState(false);
 
   const { name } = props.location.state;
+  const [ID, setID] = useState();
 
-  // initing player on component mount
+  // initing player on name change
   useEffect(() => {
     socket.emit(
       `initPlayer`,
       name,
-      ({ startSnake, startDirection, color }, otherSnakes, startVotes) => {
+      ({ id, startSnake, startDirection, color }, otherSnakes, startVotes) => {
         console.log(`initing player`);
+        setID(id);
         setMove(startDirection);
         setSnake(startSnake);
         setOtherSnakes(otherSnakes);
@@ -44,47 +46,41 @@ export default (props) => {
     return () => {
       socket.off(`initPlayer`);
     };
-  }, [name, setColor]);
+  }, [name]);
 
-  // attaching listener for player leaving
+  // attaching listeners
   useEffect(() => {
     socket.on(`playerLeft`, (oldPlayerID) => {
       console.log(`player left: ${oldPlayerID}`);
-      const filteredSnakes = otherSnakes.filter((s) => s.id !== oldPlayerID);
-      setOtherSnakes(filteredSnakes);
+      setOtherSnakes((os) => {
+        const fs = os.filter((s) => s.id != oldPlayerID);
+        return fs;
+      });
     });
 
-    return () => socket.off(`playerLeft`);
-  }, [otherSnakes]);
-
-  // listener for new player joined
-  useEffect(() => {
     socket.on(`newPlayerJoined`, (newPlayer) => {
       console.log(`new player joined`);
-      otherSnakes.push(newPlayer);
       setNewPlayer(newPlayer);
+      setOtherSnakes((os) => [...os, newPlayer]);
     });
-    return () => socket.off(`newPlayerJoined`);
-  }, [otherSnakes]);
 
-  // listener for updating votes on screen
-  useEffect(() => {
     socket.on(`updateVotes`, (subtract = false) => {
       console.log(`updated votes`);
-      if (subtract) setVotes(Math.max(votes - 1, 0));
-      else setVotes(votes + 1);
+      if (subtract) setVotes((v) => Math.max(v - 1, 0));
+      else setVotes((v) => v + 1);
     });
 
-    return () => socket.off(`updateVotes`);
-  }, [votes]);
-
-  // listener for starting game
-  useEffect(() => {
     socket.on(`startGame`, () => {
       console.log(`starting game...`);
       setTimeout(startGame, 3000);
     });
-    return () => socket.off(`startGame`);
+
+    socket.on(`pong`, () => console.log(`server ponged`));
+
+    return () => {
+      socket.off();
+      socket.disconnect();
+    };
   }, []);
 
   // listener to paint canvas when snake, food or otherSnakes changes
@@ -103,7 +99,7 @@ export default (props) => {
     }
     context.fillStyle = "lavender";
     context.fillRect(food[0], food[1], 1, 1);
-  }, [color, snake, food, otherSnakes, newPlayer]);
+  });
 
   onkeydown = (e) => {
     const { keyCode } = e;
@@ -159,8 +155,7 @@ export default (props) => {
 
   // function that updates snake every x seconds
   const gameLoop = () => {
-    setScore(score + 1);
-    console.log(`game running ${new Date().toDateString}`);
+    setScore((s) => s + 1);
     const newSnake = JSON.parse(JSON.stringify(snake));
     const newSnakeHead = [newSnake[0][0] + move[0], newSnake[0][1] + move[1]];
     if (hasCollided(newSnakeHead)) {

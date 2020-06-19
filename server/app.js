@@ -1,6 +1,7 @@
 const express = require("express");
 const { uuid } = require("uuidv4");
 const { start } = require("repl");
+const { SSL_OP_COOKIE_EXCHANGE } = require("constants");
 const app = express();
 const http = require("http").Server(app);
 
@@ -144,12 +145,16 @@ io.on(`connection`, (socket) => {
     startSnake: null,
   });
 
+  socket.on(`ping`, () => socket.emit(`pong`));
+
+  socket.on(`disconnecting`, () => socket.emit(`pong`));
+
   socket.on(`disconnect`, () => {
-    console.log(`${socket.id} disconnected`);
+    console.log(`${socket.id} disconnected...`);
     players = players.filter((p) => p.id !== socket.id);
     if (hasVoted.includes(socket.id)) {
       votes--;
-      socket.broadcast.emit(`updateVotes`, true);
+      io.emit(`updateVotes`, true);
     }
     delete positionMap[socket.id];
     io.emit(`playerLeft`, socket.id);
