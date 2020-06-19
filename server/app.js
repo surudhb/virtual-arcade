@@ -97,6 +97,9 @@ let votes = 0;
 const positionMap = {};
 let hasVoted = [];
 const DIM = 38;
+const TRANSPORT_CLOSE = `transport close`;
+const TRANSPORT_ERR = `transport error`;
+const TIMEOUT = `ping timeout`;
 
 const startPositions = [
   [
@@ -136,28 +139,24 @@ const getStartDirection = (index) => (index <= 1 ? [0, 1] : [0, -1]);
 // NEW IMPLEMENTATION
 io.on(`connection`, (socket) => {
   console.log(`${socket.id} connected`);
-  players.push({
-    id: socket.id,
-    snake: null,
-    color: `#${generateRandomColor()}`,
-    name: ``,
-    startDirection: null,
-    startSnake: null,
-  });
 
-  socket.on(`ping`, () => socket.emit(`pong`));
+  socket.on(`cleanup`, (ID) => console.log(`cleaning up ${ID}`));
 
-  socket.on(`disconnecting`, () => socket.emit(`pong`));
+  socket.on(`reconnect`, () => console.log(`reconnecting`));
 
-  socket.on(`disconnect`, () => {
-    console.log(`${socket.id} disconnected...`);
-    players = players.filter((p) => p.id !== socket.id);
-    if (hasVoted.includes(socket.id)) {
-      votes--;
-      io.emit(`updateVotes`, true);
+  socket.on(`disconnect`, (reason) => {
+    console.log(` disconnected because ${reason}`);
+    const name = socket.handshake.query.name;
+    const oldPlayer = players.filter((p) => p.name === name);
+    if (reason !== TIMEOUT) {
+      players = players.filter((p) => p.name !== name);
+      if (hasVoted.includes(oldPlayer.id)) {
+        votes--;
+        io.emit(`updateVotes`, true);
+      }
+      delete positionMap[oldPlayer.id];
+      io.emit(`playerLeft`, oldPlayer.id);
     }
-    delete positionMap[socket.id];
-    io.emit(`playerLeft`, socket.id);
   });
 
   socket.on(`reconnect`, (num) => {
@@ -166,29 +165,31 @@ io.on(`connection`, (socket) => {
 
   socket.on(`initPlayer`, (name, cb) => {
     console.log(`initializing player ${socket.id}`);
-    const startIndex = getUniqueStart(socket.id);
+    const id = uuid();
+    const startIndex = getUniqueStart(id);
     const startSnake = startPositions[startIndex];
     const startDirection = getStartDirection(startIndex);
-    players.map((p) => {
-      if (p.id === socket.id) {
-        p.name = name;
-        p.snake = startSnake;
-        p.startSnake = startSnake;
-        p.startDirection = startDirection;
-      }
-      return p;
-    });
-    const otherPlayers = players.filter((p) => p.id !== socket.id);
-    const currPlayer = players.filter((p) => p.id === socket.id)[0];
-    cb(currPlayer, otherPlayers, votes);
+    const otherPlayers = players;
+    const newPlayer = {
+      id,
+      sid: socket.id,
+      snake: startSnake,
+      color: `#${generateRandomColor()}`,
+      name: name,
+      startDirection: startDirection,
+      startSnake: startSnake,
+    };
+    players.push(newPlayer);
 
-    // broadcast to other players to add this player
-    console.log(currPlayer.snake);
-    socket.broadcast.emit(`newPlayerJoined`, currPlayer);
+    // broadcast to other players to add this playerxx
+    socket.broadcast.emit(`newPlayerJoined`, newPlayer);
+
+    // callback to initialize current player
+    cb(newPlayer, otherPlayers, votes);
   });
 
-  socket.on(`addVote`, (name) => {
-    hasVoted.push(socket.id);
+  socket.on(`addVote`, (id, name) => {
+    hasVoted.push(id);
     votes++;
     console.log(`${name} has voted to start game`);
     socket.broadcast.emit(`updateVotes`);

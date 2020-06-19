@@ -3,10 +3,15 @@ import { useInterval } from "../../hooks";
 import io from "socket.io-client";
 import { DIRECTIONS, CANVAS_SIZE, SCALE, FOOD_START } from "../Snake/constants";
 
-const socket = io.connect(`localhost:4000`, { forceNew: false });
+// const socket = io.connect(`localhost:4000`, { forceNew: false });
+let socket;
 
 export default (props) => {
   const canvasRef = useRef(null);
+  socket = io.connect(`localhost:4000`, {
+    forceNew: false,
+    query: `name=${props.location.state.name}`,
+  });
 
   const [snake, setSnake] = useState();
   const [color, setColor] = useState();
@@ -53,7 +58,7 @@ export default (props) => {
     socket.on(`playerLeft`, (oldPlayerID) => {
       console.log(`player left: ${oldPlayerID}`);
       setOtherSnakes((os) => {
-        const fs = os.filter((s) => s.id != oldPlayerID);
+        const fs = os.filter((s) => s.id !== oldPlayerID);
         return fs;
       });
     });
@@ -74,13 +79,6 @@ export default (props) => {
       console.log(`starting game...`);
       setTimeout(startGame, 3000);
     });
-
-    socket.on(`pong`, () => console.log(`server ponged`));
-
-    return () => {
-      socket.off();
-      socket.disconnect();
-    };
   }, []);
 
   // listener to paint canvas when snake, food or otherSnakes changes
@@ -168,7 +166,7 @@ export default (props) => {
       }
       newSnake.unshift(newSnakeHead);
       setSnake(newSnake);
-      socket.emit(`snakeMoved`, newSnake);
+      socket.emit(`snakeMoved`, ID, newSnake);
     }
   };
 
@@ -179,7 +177,7 @@ export default (props) => {
   const castVote = () => {
     if (!hasVoted) {
       setVotes(votes + 1);
-      socket.emit(`addVote`, name);
+      socket.emit(`addVote`, ID, name);
       setHasVoted(true);
     } else {
       console.log(`Vote already cast.`);
