@@ -44,3 +44,9 @@ http.listen(PORT, () => console.log(`Server listening on port ${PORT}`))
 // if someone sends me something, i should know how to respond
 
 // next available index and connections dont work properly
+
+// having multiple renders for each snake is causing latency issues
+// the trick has to be start the game at the same time and then only have
+// one drawing action occur and draw with the latest info you have
+
+// emit votes and if votes == numplayers, initiate countdown and start

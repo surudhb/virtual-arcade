@@ -25,6 +25,7 @@ export default (props) => {
   const [numPlayers, setNumPlayers] = useState(0)
   const [votes, setVotes] = useState(0)
   const [snake, setSnake] = useState()
+  const [dead, setDead] = useState(false)
   const [otherSnake, setOtherSnake] = useState()
   const [otherColor, setOtherColor] = useState()
   const [color, setColor] = useState()
@@ -119,6 +120,7 @@ export default (props) => {
     const newSnake = snake.map((arr) => arr.slice())
     const newSnakeHead = [newSnake[0][0] + move[0], newSnake[0][1] + move[1]]
     if (hasCollided(newSnakeHead)) {
+      setDead(true)
       resetGame()
     } else {
       if (hasEatenFood(newSnakeHead)) {
@@ -143,6 +145,38 @@ export default (props) => {
 
   useInterval(gameLoop, speed)
 
+  // render if player is dead, but other player isn't
+  useEffect(() => {
+    if (dead) {
+      context = canvasRef.current.getContext("2d")
+      context.setTransform(SCALE, 0, 0, SCALE, 0, 0)
+      context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1])
+      if (snake) {
+        snake.forEach(([x, y]) => {
+          context.fillStyle = "lightgreen"
+          context.fillRect(x, y + 0.1, 1.01, 1.01)
+          context.fillRect(x, y - 0.1, 1.01, 1.01)
+          context.fillRect(x - 0.1, y, 1.01, 1.01)
+          context.fillRect(x + 0.1, y, 1.01, 1.01)
+          context.fillStyle = color
+          context.fillRect(x, y, 1, 1)
+        })
+      }
+      if (otherSnake) {
+        otherSnake.forEach(([x, y]) => {
+          context.fillStyle = "lightgreen"
+          context.fillRect(x, y + 0.1, 1.01, 1.01)
+          context.fillRect(x, y - 0.1, 1.01, 1.01)
+          context.fillRect(x - 0.1, y, 1.01, 1.01)
+          context.fillRect(x + 0.1, y, 1.01, 1.01)
+          context.fillStyle = otherColor
+          context.fillRect(x, y, 1, 1)
+        })
+      }
+    }
+  }, [otherSnake, otherColor])
+
+  // render if player is alive
   useEffect(() => {
     socket.emit(`move snake`, snake, color)
     context = canvasRef.current.getContext("2d")
