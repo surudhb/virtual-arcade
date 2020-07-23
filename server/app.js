@@ -12,7 +12,6 @@ app.get("/", (_, res) => res.send(`<h1>Listening....</h1>`))
 let connections = []
 let nextAvailableIndex = 0
 let players = new Set()
-let playerCountInterval
 
 // NEW IMPLEMENTATION
 io.sockets.on(`connection`, (socket) => {
@@ -24,7 +23,11 @@ io.sockets.on(`connection`, (socket) => {
 
   socket.on(`set name`, (name, cb) => {
     players.add(name)
-    cb(connections.length, 0)
+    cb(connections.length, nextAvailableIndex++ % players.size)
+  })
+
+  socket.on(`move snake`, (snake, color) => {
+    socket.broadcast.emit(`set other snake`, snake, color)
   })
 
   socket.on(`disconnect`, (reason) => {

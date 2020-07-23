@@ -14,6 +14,7 @@ import io from "socket.io-client"
 
 const ENDPOINT = `localhost:4000`
 let socket
+let context
 
 export default (props) => {
   const canvasRef = useRef(null)
@@ -24,6 +25,8 @@ export default (props) => {
   const [numPlayers, setNumPlayers] = useState(0)
   const [votes, setVotes] = useState(0)
   const [snake, setSnake] = useState()
+  const [otherSnake, setOtherSnake] = useState()
+  const [otherColor, setOtherColor] = useState()
   const [color, setColor] = useState()
   const [food, setFood] = useState(FOOD_START)
   const [move, setMove] = useState()
@@ -53,12 +56,19 @@ export default (props) => {
     return () => socket.off(`total players`)
   })
 
+  useEffect(() => {
+    socket.on(`set other snake`, (otherSnake, otherColor) => {
+      setOtherSnake(otherSnake)
+      setOtherColor(otherColor)
+      return () => socket.off(`set other snake`)
+    })
+  })
+
   const startGame = () => {
     setSpeed(SPEED)
     setSnake(SNAKE_START[index])
     setColor(SNAKE_COLORS[index])
     setMove(MOVE_START[index])
-    socket.emit(`snake move`, snake, index)
   }
 
   const resetGame = () => {
@@ -67,7 +77,6 @@ export default (props) => {
     setSnake(SNAKE_START[index])
     setFood(FOOD_START)
     setMove(MOVE_START[index])
-    socket.emit(`reset`, snake)
   }
 
   const castVote = () => socket.emit(`vote`)
@@ -135,7 +144,8 @@ export default (props) => {
   useInterval(gameLoop, speed)
 
   useEffect(() => {
-    const context = canvasRef.current.getContext("2d")
+    socket.emit(`move snake`, snake, color)
+    context = canvasRef.current.getContext("2d")
     context.setTransform(SCALE, 0, 0, SCALE, 0, 0)
     context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1])
     if (snake) {
@@ -149,11 +159,22 @@ export default (props) => {
         context.fillRect(x, y, 1, 1)
       })
     }
+    if (otherSnake) {
+      otherSnake.forEach(([x, y]) => {
+        context.fillStyle = "lightgreen"
+        context.fillRect(x, y + 0.1, 1.01, 1.01)
+        context.fillRect(x, y - 0.1, 1.01, 1.01)
+        context.fillRect(x - 0.1, y, 1.01, 1.01)
+        context.fillRect(x + 0.1, y, 1.01, 1.01)
+        context.fillStyle = otherColor
+        context.fillRect(x, y, 1, 1)
+      })
+    }
     if (food) {
       context.fillStyle = "lightgreen"
       context.fillRect(food[0], food[1], 1, 1)
     }
-  }, [color, snake, food])
+  }, [snake, color, food])
 
   return (
     <div className="vh-100 text-center container-fluid bg-dark text-white">
