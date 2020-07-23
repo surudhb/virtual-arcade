@@ -1,14 +1,11 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react"
+import { Link } from "react-router-dom"
 
 export default () => {
-  const [name, setName] = useState("");
+  const [name, setName] = useState("")
 
   return (
-    <div
-      style={{ height: "100vh" }}
-      className="bg-dark text-light text-center container-fluid"
-    >
+    <div className="vh-100 bg-dark text-light text-center container-fluid">
       <div className="jumbotron jumbotron-fluid bg-dark">
         <h1>Welcome to the arcade!</h1>
         <ul className="list-group">
@@ -22,8 +19,12 @@ export default () => {
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-            <Link to={{ pathname: "/snake2", state: { name } }}>
-              <button disabled={!name} className="btn btn-dark" type="submit">
+            <Link to={{ pathname: "/snake", state: { name } }}>
+              <button
+                disabled={name === ""}
+                className="btn btn-secondary"
+                type="submit"
+              >
                 Enter
               </button>
             </Link>
@@ -31,5 +32,5 @@ export default () => {
         </ul>
       </div>
     </div>
-  );
-};
+  )
+}

@@ -1,151 +1,171 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useInterval } from "../../hooks";
-import { CANVAS_SIZE, SCALE, FOOD_START, SPEED, DIRECTIONS } from "./constants";
-import io from "socket.io-client";
+import React, { useState, useEffect, useRef } from "react"
+import { useInterval } from "../../hooks"
+import {
+  CANVAS_SIZE,
+  SCALE,
+  FOOD_START,
+  MOVE_START,
+  SNAKE_START,
+  SNAKE_COLORS,
+  SPEED,
+  DIRECTIONS,
+} from "./constants"
+import io from "socket.io-client"
 
-let socket;
+let socket
 
 export default (props) => {
-  const canvasRef = useRef(null);
+  const canvasRef = useRef(null)
 
-  const dims = CANVAS_SIZE[0] / SCALE;
+  const [score, setScore] = useState(0)
+  const [index, setIndex] = useState(-1)
+  const [numPlayers, setNumPlayers] = useState(0)
+  const [votes, setVotes] = useState(0)
+  const [snake, setSnake] = useState()
+  const [color, setColor] = useState()
+  const [food, setFood] = useState(FOOD_START)
+  const [move, setMove] = useState()
+  const [speed, setSpeed] = useState(null)
 
-  const [snake, setSnake] = useState();
-  const [food, setFood] = useState(FOOD_START);
-  const [move, setMove] = useState([1, 0]);
-  const [speed, setSpeed] = useState(null);
-  const [gameOver, setGameOver] = useState(false);
-
-  const { name } = props.location.state;
+  const { name } = props.location.state
 
   useEffect(() => {
-    socket = io.connect("192.168.0.11:4000");
-    socket.emit(`initSnakePlayer`, { name, dims }, (newSnake, newMove) => {
-      setSnake(newSnake);
-      setMove(newMove);
-      socket.emit(`snakeMoved`, newSnake);
-      // cleanup
-      return () => {
-        socket.emit("disconnect");
-        socket.off();
-      };
-    });
-  }, [name, dims]);
+    socket = io.connect(`localhost:4000`)
+
+    socket.on(`players`, (numPlayers) => setNumPlayers(numPlayers))
+    if (index === -1)
+      socket.emit(`get index`, (index) => {
+        setIndex(index)
+        setSnake(SNAKE_START[index])
+        setColor(SNAKE_COLORS[index])
+        setMove(MOVE_START[index])
+      })
+
+    socket.on(`draw fellow snake`, ({ _snake, _index }) => {
+      const context = canvasRef.current.getContext("2d")
+      context.setTransform(SCALE, 0, 0, SCALE, 0, 0)
+      context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1])
+      context.fillStyle = SNAKE_COLORS[_index]
+      _snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1))
+      if (index !== -1) {
+        context.fillStyle = color
+        snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1))
+      }
+      context.fillStyle = "lightgreen"
+      context.fillRect(food[0], food[1], 1, 1)
+    })
+
+    socket.on(`increment votes`, () => setVotes((votes) => votes + 1))
+
+    return () => {
+      socket.off()
+      socket.disconnect()
+    }
+  })
 
   const startGame = () => {
-    setSpeed(SPEED);
-  };
+    setSpeed(SPEED)
+    setSnake(SNAKE_START[index])
+    setColor(SNAKE_COLORS[index])
+    setMove(MOVE_START[index])
+    socket.emit(`snake move`, snake, index)
+  }
 
   const resetGame = () => {
-    setSpeed(null);
-    setGameOver(true);
-    socket.emit(`reset`, dims, (newSnake, newMove) => {
-      setMove(newMove);
-      setSnake(newSnake);
-      socket.emit(`snakeMoved`, newSnake);
-    });
-  };
+    setScore(0)
+    setSpeed(null)
+    setSnake(SNAKE_START[index])
+    setFood(FOOD_START)
+    setMove(MOVE_START[index])
+    socket.emit(`reset`, snake)
+  }
 
-  const moveSnake = (keyCode) => setMove(DIRECTIONS[keyCode]);
+  const castVote = () => socket.emit(`vote`)
+
+  const moveSnake = (keyCode) => setMove(DIRECTIONS[keyCode])
 
   const randomFood = (idx) =>
-    Math.floor((Math.random() * CANVAS_SIZE[idx]) / SCALE);
+    Math.floor((Math.random() * CANVAS_SIZE[idx]) / SCALE)
 
   const createFood = () => {
-    let x = randomFood(0);
-    let y = randomFood(1);
+    let x = randomFood(0)
+    let y = randomFood(1)
     while (hasCollidedWithSnake([x, y])) {
-      x = randomFood(0);
-      y = randomFood(1);
+      x = randomFood(0)
+      y = randomFood(1)
     }
-    return [x, y];
-  };
+    return [x, y]
+  }
 
-  const hasEatenFood = (head) => head[0] === food[0] && head[1] === food[1];
+  const hasEatenFood = (head) => head[0] === food[0] && head[1] === food[1]
 
   const isAxisCollision = (axis, idx) =>
-    axis < 0 || axis * SCALE >= CANVAS_SIZE[idx];
+    axis < 0 || axis * SCALE >= CANVAS_SIZE[idx]
 
   const hasCollidedWithWall = (head) =>
-    isAxisCollision(head[0], 0) || isAxisCollision(head[1], 1);
+    isAxisCollision(head[0], 0) || isAxisCollision(head[1], 1)
 
   const hasCollidedWithSnake = (head) => {
     for (const part of snake) {
-      if (part[0] === head[0] && part[1] === head[1]) return true;
+      if (part[0] === head[0] && part[1] === head[1]) return true
     }
-    return false;
-  };
+    return false
+  }
 
   const hasCollided = (head) =>
-    hasCollidedWithWall(head) || hasCollidedWithSnake(head);
+    hasCollidedWithWall(head) || hasCollidedWithSnake(head)
 
   // experiment with this -- so shady -- do you really need to deep copy
   const gameLoop = () => {
-    const newSnake = JSON.parse(JSON.stringify(snake));
-    const newSnakeHead = [newSnake[0][0] + move[0], newSnake[0][1] + move[1]];
+    const newSnake = snake.map((arr) => arr.slice())
+    const newSnakeHead = [newSnake[0][0] + move[0], newSnake[0][1] + move[1]]
     if (hasCollided(newSnakeHead)) {
-      resetGame();
+      resetGame()
     } else {
       if (hasEatenFood(newSnakeHead)) {
-        setFood(createFood());
+        setFood(createFood())
+        setScore((score) => score + 1)
+        score > 0 && score % 4 === 0 && setSpeed((speed) => speed - 5)
       } else {
-        newSnake.pop();
+        newSnake.pop()
       }
-      newSnake.unshift(newSnakeHead);
-      setSnake(newSnake);
-      socket.emit("snakeMoved", newSnake);
+      newSnake.unshift(newSnakeHead)
+      setSnake(newSnake)
+      socket.emit(`snake move`, newSnake, index)
     }
-  };
+  }
 
   onkeydown = (e) => {
-    const { keyCode } = e;
-    if ((keyCode >= 37 && keyCode <= 40) || keyCode === 32) {
-      e.preventDefault();
-      if (keyCode >= 37 && keyCode <= 40) {
-        moveSnake(keyCode);
-      } else {
-        gameOver ? startGame() : resetGame();
-      }
+    const { keyCode } = e
+    if (keyCode >= 37 && keyCode <= 40) {
+      e.preventDefault()
+      moveSnake(keyCode)
     }
-  };
+  }
 
-  useInterval(gameLoop, speed);
+  useInterval(gameLoop, speed)
 
   useEffect(() => {
-    const context = canvasRef.current.getContext("2d");
-    context.setTransform(SCALE, 0, 0, SCALE, 0, 0);
-    context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1]);
+    const context = canvasRef.current.getContext("2d")
+    context.setTransform(SCALE, 0, 0, SCALE, 0, 0)
+    context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1])
     if (snake) {
-      context.fillStyle = "pink";
-      snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
+      context.fillStyle = color
+      snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1))
     }
     if (food) {
-      context.fillStyle = "lightblue";
-      context.fillRect(food[0], food[1], 1, 1);
+      context.fillStyle = "lightgreen"
+      context.fillRect(food[0], food[1], 1, 1)
     }
-    socket.on("fellowSnakeMoved", (otherPlayer) => {
-      console.log(`fellow snake moved`);
-      context.setTransform(SCALE, 0, 0, SCALE, 0, 0);
-      context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1]);
-      if (snake) {
-        context.fillStyle = "pink";
-        snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
-      }
-      if (food) {
-        context.fillStyle = "lightblue";
-        context.fillRect(food[0], food[1], 1, 1);
-      }
-      context.fillStyle = otherPlayer.colour;
-      otherPlayer.snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1));
-    });
-  }, [snake, food]);
+  }, [color, snake, food])
 
   return (
-    <div
-      className="text-center container-fluid bg-dark text-white"
-      style={{ height: "100vh" }}
-    >
+    <div className="vh-100 text-center container-fluid bg-dark text-white">
       <h3>Snake</h3>
+      <h5>
+        Player: {name}&nbsp;&nbsp;Score: {score}&nbsp;&nbsp; Votes cast: {votes}
+        /{numPlayers}
+      </h5>
       <div>
         <canvas
           style={{ border: "1px dashed white", borderRadius: "7px" }}
@@ -167,7 +187,13 @@ export default (props) => {
         >
           Reset
         </button>
+        <button
+          className="btn btn-success border-light rounded-pill mx-3 mt-3 my-4 px-3"
+          onClick={() => castVote()}
+        >
+          Vote
+        </button>
       </div>
     </div>
-  );
-};
+  )
+}
