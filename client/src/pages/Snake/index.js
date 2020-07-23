@@ -12,13 +12,15 @@ import {
 } from "./constants"
 import io from "socket.io-client"
 
+const ENDPOINT = `localhost:4000`
 let socket
 
 export default (props) => {
   const canvasRef = useRef(null)
 
   const [score, setScore] = useState(0)
-  const [index, setIndex] = useState(-1)
+  const [name, setName] = useState(``)
+  const [index, setIndex] = useState(0)
   const [numPlayers, setNumPlayers] = useState(0)
   const [votes, setVotes] = useState(0)
   const [snake, setSnake] = useState()
@@ -27,40 +29,28 @@ export default (props) => {
   const [move, setMove] = useState()
   const [speed, setSpeed] = useState(null)
 
-  const { name } = props.location.state
-
   useEffect(() => {
-    socket = io.connect(`localhost:4000`)
-
-    socket.on(`players`, (numPlayers) => setNumPlayers(numPlayers))
-    if (index === -1)
-      socket.emit(`get index`, (index) => {
+    const { name } = props.location.state
+    if (!socket) {
+      socket = io.connect(ENDPOINT)
+      socket.emit(`set name`, name, (playerCount, index) => {
+        setNumPlayers(playerCount)
+        setName(name)
         setIndex(index)
         setSnake(SNAKE_START[index])
         setColor(SNAKE_COLORS[index])
         setMove(MOVE_START[index])
       })
+    }
+    return () => socket.off()
+  }, [props.location.state])
 
-    socket.on(`draw fellow snake`, ({ _snake, _index }) => {
-      const context = canvasRef.current.getContext("2d")
-      context.setTransform(SCALE, 0, 0, SCALE, 0, 0)
-      context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1])
-      context.fillStyle = SNAKE_COLORS[_index]
-      _snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1))
-      if (index !== -1) {
-        context.fillStyle = color
-        snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1))
-      }
-      context.fillStyle = "lightgreen"
-      context.fillRect(food[0], food[1], 1, 1)
+  useEffect(() => {
+    socket.on(`total players`, (totalPlayers) => {
+      setNumPlayers(totalPlayers)
     })
 
-    socket.on(`increment votes`, () => setVotes((votes) => votes + 1))
-
-    return () => {
-      socket.off()
-      socket.disconnect()
-    }
+    return () => socket.off(`total players`)
   })
 
   const startGame = () => {
@@ -131,7 +121,6 @@ export default (props) => {
       }
       newSnake.unshift(newSnakeHead)
       setSnake(newSnake)
-      socket.emit(`snake move`, newSnake, index)
     }
   }
 
@@ -150,8 +139,15 @@ export default (props) => {
     context.setTransform(SCALE, 0, 0, SCALE, 0, 0)
     context.clearRect(0, 0, CANVAS_SIZE[0], CANVAS_SIZE[1])
     if (snake) {
-      context.fillStyle = color
-      snake.forEach(([x, y]) => context.fillRect(x, y, 1, 1))
+      snake.forEach(([x, y]) => {
+        context.fillStyle = "lightgreen"
+        context.fillRect(x, y + 0.1, 1.01, 1.01)
+        context.fillRect(x, y - 0.1, 1.01, 1.01)
+        context.fillRect(x - 0.1, y, 1.01, 1.01)
+        context.fillRect(x + 0.1, y, 1.01, 1.01)
+        context.fillStyle = color
+        context.fillRect(x, y, 1, 1)
+      })
     }
     if (food) {
       context.fillStyle = "lightgreen"

@@ -11,28 +11,27 @@ app.get("/", (_, res) => res.send(`<h1>Listening....</h1>`))
 
 let connections = []
 let nextAvailableIndex = 0
-let players = 0
+let players = new Set()
+let playerCountInterval
 
 // NEW IMPLEMENTATION
 io.sockets.on(`connection`, (socket) => {
   console.log(`${socket.id} connected`)
 
   connections.push(socket.id)
-  // console.log(`connections length: ${connections.length}`)
+  io.emit(`total players`, connections.length)
+  console.log(`connections count: ${connections.length}`)
 
-  socket.on(`vote`, () => io.emit(`increment votes`))
+  socket.on(`set name`, (name, cb) => {
+    players.add(name)
+    cb(connections.length, 0)
+  })
 
-  // setInterval(() => io.emit(`players`, connections.length), 1000)
-
-  socket.on(`snake move`, (_snake, _index) =>
-    socket.broadcast.emit(`draw fellow snake`, { _snake, _index })
-  )
-
-  socket.on(`get index`, (fn) => fn(nextAvailableIndex++ % connections.length))
-
-  socket.once(`disconnect`, () => {
+  socket.on(`disconnect`, (reason) => {
+    console.log(reason)
     console.log(`${socket.id} disconnected`)
     connections = connections.filter((id) => id !== socket.id)
+    io.emit(`total players`, connections.length)
   })
 })
 
