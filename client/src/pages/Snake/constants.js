@@ -18,7 +18,7 @@ const SNAKE_START = [
   ],
 ]
 
-const SNAKE_COLORS = [`black`, `white`]
+const SNAKE_COLORS = [`black`, `brown`]
 
 const SCALE = 20
 

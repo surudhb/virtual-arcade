@@ -12,6 +12,7 @@ app.get("/", (_, res) => res.send(`<h1>Listening....</h1>`))
 let connections = []
 let nextAvailableIndex = 0
 let players = new Set()
+let votesCast = 0
 
 // NEW IMPLEMENTATION
 io.sockets.on(`connection`, (socket) => {
@@ -24,6 +25,12 @@ io.sockets.on(`connection`, (socket) => {
   socket.on(`set name`, (name, cb) => {
     players.add(name)
     cb(connections.length, nextAvailableIndex++ % players.size)
+  })
+
+  socket.on(`update votes`, ({ increment }) => {
+    votesCast += increment ? 1 : -1
+    io.emit(`set votes`, votesCast)
+    if (votesCast == connections.length) io.emit(`let the games begin`)
   })
 
   socket.on(`move snake`, (snake, color) => {

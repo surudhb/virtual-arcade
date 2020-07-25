@@ -24,8 +24,9 @@ export default (props) => {
   const [index, setIndex] = useState(0)
   const [numPlayers, setNumPlayers] = useState(0)
   const [votes, setVotes] = useState(0)
+  const [didCastVote, setDidCastVote] = useState(false)
   const [snake, setSnake] = useState()
-  const [dead, setDead] = useState(false)
+  const [dead, setDead] = useState(true)
   const [otherSnake, setOtherSnake] = useState()
   const [otherColor, setOtherColor] = useState()
   const [color, setColor] = useState()
@@ -61,11 +62,21 @@ export default (props) => {
     socket.on(`set other snake`, (otherSnake, otherColor) => {
       setOtherSnake(otherSnake)
       setOtherColor(otherColor)
-      return () => socket.off(`set other snake`)
     })
+
+    socket.on(`set votes`, (votesCast) => setVotes(votesCast))
+
+    socket.on(`let the games begin`, () => startGame())
+
+    return () => {
+      socket.off(`set other snake`)
+      socket.off(`set votes`)
+      socket.off(`let the games begin`)
+    }
   })
 
   const startGame = () => {
+    setDead(false)
     setSpeed(SPEED)
     setSnake(SNAKE_START[index])
     setColor(SNAKE_COLORS[index])
@@ -73,6 +84,7 @@ export default (props) => {
   }
 
   const resetGame = () => {
+    setDead(true)
     setScore(0)
     setSpeed(null)
     setSnake(SNAKE_START[index])
@@ -80,7 +92,15 @@ export default (props) => {
     setMove(MOVE_START[index])
   }
 
-  const castVote = () => socket.emit(`vote`)
+  const castVote = () => {
+    if (didCastVote) {
+      setDidCastVote(false)
+      socket.emit(`update votes`, { increment: false })
+    } else {
+      setDidCastVote(true)
+      socket.emit(`update votes`, { increment: true })
+    }
+  }
 
   const moveSnake = (keyCode) => setMove(DIRECTIONS[keyCode])
 
@@ -173,8 +193,12 @@ export default (props) => {
           context.fillRect(x, y, 1, 1)
         })
       }
+      if (food) {
+        context.fillStyle = "lightgreen"
+        context.fillRect(food[0], food[1], 1, 1)
+      }
     }
-  }, [otherSnake, otherColor])
+  }, [dead, otherSnake, otherColor])
 
   // render if player is alive
   useEffect(() => {
@@ -242,7 +266,7 @@ export default (props) => {
           className="btn btn-success border-light rounded-pill mx-3 mt-3 my-4 px-3"
           onClick={() => castVote()}
         >
-          Vote
+          {didCastVote ? `Retract Vote` : `Vote`}
         </button>
       </div>
     </div>
