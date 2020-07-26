@@ -12,7 +12,7 @@ import {
 } from "./constants"
 import io from "socket.io-client"
 
-const ENDPOINT = `localhost:4000`
+const ENDPOINT = `192.168.0.11:4000`
 let socket
 let context
 
@@ -53,6 +53,9 @@ export default (props) => {
   useEffect(() => {
     socket.on(`total players`, (totalPlayers) => {
       setNumPlayers(totalPlayers)
+      if (numPlayers > 1 && !otherSnake) {
+        socket.emit(`other snake missing`)
+      }
     })
 
     return () => socket.off(`total players`)
@@ -60,9 +63,12 @@ export default (props) => {
 
   useEffect(() => {
     socket.on(`set other snake`, (otherSnake, otherColor) => {
+      console.log(`setting other snake for ${name}`)
       setOtherSnake(otherSnake)
       setOtherColor(otherColor)
     })
+
+    socket.on(`send init snake`, () => socket.emit(`move snake`, snake, color))
 
     socket.on(`set votes`, (votesCast) => setVotes(votesCast))
 
@@ -70,6 +76,7 @@ export default (props) => {
 
     return () => {
       socket.off(`set other snake`)
+      socket.off(`send init snake`)
       socket.off(`set votes`)
       socket.off(`let the games begin`)
     }
@@ -85,14 +92,17 @@ export default (props) => {
 
   const resetGame = () => {
     setDead(true)
+    setVotes(0)
     setScore(0)
     setSpeed(null)
     setSnake(SNAKE_START[index])
     setFood(FOOD_START)
     setMove(MOVE_START[index])
+    socket.emit(`update votes`, { increment: false })
   }
 
   const castVote = () => {
+    if (votes === numPlayers) return
     if (didCastVote) {
       setDidCastVote(false)
       socket.emit(`update votes`, { increment: false })
@@ -263,7 +273,9 @@ export default (props) => {
           Reset
         </button>
         <button
-          className="btn btn-success border-light rounded-pill mx-3 mt-3 my-4 px-3"
+          className={`btn btn-success border-light rounded-pill mx-3 mt-3 my-4 px-3 ${
+            numPlayers === votes && `disabled`
+          }`}
           onClick={() => castVote()}
         >
           {didCastVote ? `Retract Vote` : `Vote`}

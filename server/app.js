@@ -27,15 +27,19 @@ io.sockets.on(`connection`, (socket) => {
     cb(connections.length, nextAvailableIndex++ % players.size)
   })
 
+  socket.on(`other snake missing`, () =>
+    socket.broadcast.emit(`send init snake`)
+  )
+
   socket.on(`update votes`, ({ increment }) => {
-    votesCast += increment ? 1 : -1
+    votesCast += increment ? 1 : votesCast == 0 ? 0 : -1
     io.emit(`set votes`, votesCast)
     if (votesCast == connections.length) io.emit(`let the games begin`)
   })
 
-  socket.on(`move snake`, (snake, color) => {
+  socket.on(`move snake`, (snake, color) =>
     socket.broadcast.emit(`set other snake`, snake, color)
-  })
+  )
 
   socket.on(`disconnect`, (reason) => {
     console.log(reason)
@@ -56,4 +60,4 @@ http.listen(PORT, () => console.log(`Server listening on port ${PORT}`))
 // the trick has to be start the game at the same time and then only have
 // one drawing action occur and draw with the latest info you have
 
-// emit votes and if votes == numplayers, initiate countdown and start
+// second player isn't aware of the first until the first one resets
